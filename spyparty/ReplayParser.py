@@ -9,6 +9,30 @@ from spyparty.ReplayVersion4Offsets import ReplayVersion4Offsets
 from spyparty.ReplayVersion5Offsets import ReplayVersion5Offsets
 from spyparty.ReplayVersion6Offsets import ReplayVersion6Offsets
 
+
+# Provide one broad exception for all SpyPartyParse specific exceptions.
+# Others inherit from this so that consumers can catch either
+# the overall exception or more detailed ones if desired.
+class SpyPartyParseException(Exception):
+    pass
+
+
+class ReplayFileTooShortException(SpyPartyParseException):
+    pass
+
+
+class UnknownReplayFileVersionException(SpyPartyParseException):
+    pass
+
+
+class UnknownReplayFileException(SpyPartyParseException):
+    pass
+
+
+class UnknownVenueHashException(SpyPartyParseException):
+    pass
+
+
 FILE_VERSION = 3
 
 RESULT_MAP = {
@@ -84,7 +108,7 @@ class ReplayParser:
             bytes_read = bytearray(replay_file.read())
 
         if len(bytes_read) < HEADER_DATA_MINIMUM_BYTES:
-            raise Exception("We require a minimum of %d bytes for replay parsing" % HEADER_DATA_MINIMUM_BYTES)
+            raise ReplayFileTooShortException("We require a minimum of %d bytes for replay parsing" % HEADER_DATA_MINIMUM_BYTES)
         self.bytes_read = bytes_read
 
     def _unpack_missions(self, offset):
@@ -136,7 +160,7 @@ class ReplayParser:
         elif read_file_version == 6:
             return ReplayVersion6Offsets()
         else:
-            raise Exception("Unknown file version %d" % read_file_version)
+            raise UnknownReplayFileVersionException("Unknown file version %d" % read_file_version)
 
     def _read_bytes(self, start, length):
         return self.bytes_read[start:(start + length)]
@@ -155,7 +179,7 @@ class ReplayParser:
 
     def parse(self):
         if not self._check_magic_number():
-            raise Exception("Unknown File")
+            raise UnknownReplayFileException("Unknown File")
 
         ret = {}
 
@@ -170,7 +194,7 @@ class ReplayParser:
             ret['level'] = LEVEL_MAP[self._unpack_int(offsets.get_level_offset())]
         except KeyError:
             read_hash = self._unpack_int(offsets.get_level_offset())
-            raise Exception("Unknown map hash %x" % read_hash)
+            raise UnknownVenueHashException("Unknown map hash %x" % read_hash)
 
         ret['selected_missions'] = self._unpack_missions(offsets.get_selected_missions_offset())
         ret['picked_missions'] = self._unpack_missions(offsets.get_picked_missions_offset())
