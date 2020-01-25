@@ -33,6 +33,10 @@ class UnknownVenueHashException(SpyPartyParseException):
     pass
 
 
+class UnknownGameResult(SpyPartyParseException):
+    pass
+
+
 FILE_VERSION = 3
 
 RESULT_MAP = {
@@ -40,6 +44,8 @@ RESULT_MAP = {
     1: "Time Out",
     2: "Spy Shot",
     3: "Civilian Shot"
+    # 4 is "In Progress", which likely shouldn't be
+    # parsed (data could be messed up in any number of ways)
 }
 
 VARIANT_MAP = {
@@ -188,7 +194,11 @@ class ReplayParser:
         ret['spy_username'] = offsets.extract_spy_username(self.bytes_read)
         ret['sniper_username'] = offsets.extract_sniper_username(self.bytes_read)
 
-        ret['result'] = RESULT_MAP[self._unpack_int(offsets.get_game_result_offset())]
+        try:
+            ret['result'] = RESULT_MAP[self._unpack_int(offsets.get_game_result_offset())]
+        except KeyError:
+            result = self._unpack_int(offsets.get_game_result_offset())
+            raise UnknownGameResult("Unknown game result %x" % result)
 
         try:
             ret['level'] = LEVEL_MAP[self._unpack_int(offsets.get_level_offset())]
